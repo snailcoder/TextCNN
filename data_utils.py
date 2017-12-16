@@ -35,6 +35,8 @@ def load_data(pos_path, neg_path):
             for w in words:
                 vocab[w] += 1
             sents.append(s)
+            # tf.nn.softmax_cross_entropy_with_logits takes labels
+            # in the form of one-hot vectors.
             labels.append((1, 0))
         for l in neg_file:
             s = clean_str(l.strip())

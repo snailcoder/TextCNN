@@ -17,8 +17,11 @@ tf.flags.DEFINE_integer("embedding_size", 300,
                         "Dimensionality of word embedding.")
 tf.flags.DEFINE_integer("batch_size", 50, "Batch size.")
 tf.flags.DEFINE_integer("num_epochs", 200, "Number of training epochs.")
-tf.flags.DEFINE_integer("evaluate_step", 10,
+tf.flags.DEFINE_integer("evaluate_step", 5,
                         "Evaluate model after this many steps")
+tf.flags.DEFINE_integer("early_stop_interval", 50,
+                        "Stop optimizing if no improvement found in this many"
+                        "epochs. Set this option 0 to disable early stopping.")
 
 FLAGS = tf.flags.FLAGS
 
@@ -93,12 +96,12 @@ def main(_):
             init = tf.global_variables_initializer()
             sess.run(init)
             saver = tf.train.Saver()
-            cv = 0
-            results = []
             for train_data, test_data in folds:
                 test_xs, test_ys = zip(*test_data)
                 num_batches = int(
                     np.ceil(len(train_data) / FLAGS.batch_size))
+                best_eval_accuracy = 0.0
+                last_improvement_epoch = 0
                 for epoch in range(FLAGS.num_epochs):
                     shuffled_indices = np.random.permutation(len(train_data))
                     shuffled_data = train_data[shuffled_indices]
@@ -116,18 +119,31 @@ def main(_):
                         summary_writer.add_summary(loss_summary,
                                                    sess.run(global_step))
                         avg_cost += batch_loss / num_batches
-                    print "Epoch:%d, average cost:%f" % (epoch, avg_cost)
-                    if epoch % FLAGS.evaluate_step == 0:
+                    train_accuracy = 1 - avg_cost
+                    if (epoch % FLAGS.evaluate_step == 0
+                        or epoch == num_batches - 1):
                         val_feed_dict = {cnn.input_x: np.array(test_xs),
                                          cnn.input_y: np.array(test_ys)}
-                        accuarcy, eval_summary = sess.run(
+                        eval_accuracy, eval_summary = sess.run(
                             [eval_op, eval_summary_op],
                             feed_dict=val_feed_dict)
-                        print "Epoch:%d, validation error:%f" % (epoch, 1 - accuarcy)
+                        print ("Epoch:%d, training accuracy:%f,"
+                               " validation accuracy:%f"
+                               % (epoch, train_accuracy, eval_accuracy))
                         summary_writer.add_summary(eval_summary,
                                                    sess.run(global_step))
-                        saver.save(sess, checkpoint_dir,
-                                   global_step=global_step)
+                        if eval_accuracy > best_eval_accuracy:
+                            best_eval_accuracy = eval_accuracy
+                            last_improvement_epoch = epoch
+                            # Only save the checkpoint when there is an
+                            # improvement in the validation accuracy.
+                            saver.save(sess, checkpoint_dir,
+                                       global_step=global_step)
+                    if (FLAGS.early_stop_interval != 0
+                        and epoch - last_improvement_epoch
+                            > FLAGS.early_stop_interval):
+                        print "No improvement in a while, stop optimizing."
+                        break
                 break
 
 if __name__ == "__main__":
