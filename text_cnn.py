@@ -4,7 +4,7 @@ import tensorflow as tf
 class TextCNN(object):
     def __init__(self, vocab_size, embed_size, seq_len,
                  num_classes, filter_window_sizes, num_filters,
-                 learning_rate, keep_prob):
+                 learning_rate, keep_prob, l2_lambda):
         self.input_x = tf.placeholder(tf.int32, shape=(None, seq_len))
         self.input_y = tf.placeholder(tf.float32, shape=(None, num_classes))
         self.keep_prob = keep_prob
@@ -15,6 +15,7 @@ class TextCNN(object):
         self.filter_window_sizes = filter_window_sizes
         self.num_filters = num_filters
         self.learning_rate = learning_rate
+        self.l2_lambda = l2_lambda
                 
     def _conv2d(self, input, weight_shape, bias_shape):
         weight_init = tf.truncated_normal(weight_shape, stddev=0.1)
@@ -85,15 +86,17 @@ class TextCNN(object):
         W = tf.Variable(weight_init, name="full_conn_W")
         bias_init = tf.constant(0.0, shape=(self.num_classes,))
         b = tf.Variable(bias_init, name="full_conn_b")
+        # Employ l2-regularization on the penultimate layer.
+        l2_loss = tf.nn.l2_loss(W) + tf.nn.l2_loss(b)
         output = tf.nn.xw_plus_b(drop, W, b, name="output")
-        return output
+        return output, l2_loss
 
-    def loss(self, output):
+    def loss(self, output, l2_loss):
         with tf.name_scope("loss"):
             xentropy = tf.nn.softmax_cross_entropy_with_logits(
                 logits=output,
                 labels=self.input_y)
-            train_loss = tf.reduce_mean(xentropy)
+            train_loss = tf.reduce_mean(xentropy) + self.l2_lambda * l2_loss
             loss_summary_op = tf.summary.scalar("loss", train_loss)
             return train_loss, loss_summary_op
 

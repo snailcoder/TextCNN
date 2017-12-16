@@ -22,6 +22,7 @@ tf.flags.DEFINE_integer("evaluate_step", 5,
 tf.flags.DEFINE_integer("early_stop_interval", 50,
                         "Stop optimizing if no improvement found in this many"
                         "epochs. Set this option 0 to disable early stopping.")
+tf.flags.DEFINE_float("l2_lambda", 0.0, "L2 regularization lambda.")
 
 FLAGS = tf.flags.FLAGS
 
@@ -78,10 +79,11 @@ def main(_):
                           filter_window_sizes,
                           FLAGS.num_filters,
                           FLAGS.learning_rate,
-                          FLAGS.dropout_keep_prob)
+                          FLAGS.dropout_keep_prob,
+                          FLAGS.l2_lambda)
             embedding = cnn.embed_from_scratch()
-            output = cnn.inference(embedding)
-            loss, loss_summary_op = cnn.loss(output)
+            output, l2_loss = cnn.inference(embedding)
+            loss, loss_summary_op = cnn.loss(output, l2_loss)
             global_step = tf.Variable(0, name="global_step", trainable=False)
             train_op = cnn.training(loss, global_step)
             eval_op, eval_summary_op = cnn.evaluate(output)
@@ -139,6 +141,7 @@ def main(_):
                             # improvement in the validation accuracy.
                             saver.save(sess, checkpoint_dir,
                                        global_step=global_step)
+                    # Here is the early stopping.
                     if (FLAGS.early_stop_interval != 0
                         and epoch - last_improvement_epoch
                             > FLAGS.early_stop_interval):
