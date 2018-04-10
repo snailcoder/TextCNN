@@ -12,14 +12,14 @@ tf.flags.DEFINE_string("filter_sizes", "3,4,5", "Filter window heights.")
 tf.flags.DEFINE_string("num_filters", 2,
                        "Number of filters with the same size.")
 tf.flags.DEFINE_float("learning_rate", 0.001, "Learning rate of optimizer.")
-tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability.")
+tf.flags.DEFINE_float("keep_prob", 0.5, "Dropout keep probability.")
 tf.flags.DEFINE_integer("embedding_size", 300,
                         "Dimensionality of word embedding.")
 tf.flags.DEFINE_integer("batch_size", 50, "Batch size.")
 tf.flags.DEFINE_integer("num_epochs", 200, "Number of training epochs.")
 tf.flags.DEFINE_integer("evaluate_step", 5,
                         "Evaluate model after this many steps")
-tf.flags.DEFINE_integer("early_stop_interval", 50,
+tf.flags.DEFINE_integer("early_stop_interval", 100,
                         "Stop optimizing if no improvement found in this many"
                         "epochs. Set this option 0 to disable early stopping.")
 tf.flags.DEFINE_float("l2_lambda", 0.0, "L2 regularization lambda.")
@@ -79,7 +79,6 @@ def main(_):
                           filter_window_sizes,
                           FLAGS.num_filters,
                           FLAGS.learning_rate,
-                          FLAGS.dropout_keep_prob,
                           FLAGS.l2_lambda)
             embedding = cnn.embed_from_scratch()
             output, l2_loss = cnn.inference(embedding)
@@ -114,7 +113,8 @@ def main(_):
                                                             FLAGS.batch_size)
                         x_batch, y_batch = zip(*batch_data)
                         feed_dict = {cnn.input_x: np.array(x_batch),
-                                     cnn.input_y: np.array(y_batch)}
+                                     cnn.input_y: np.array(y_batch),
+                                     cnn.keep_prob: FLAGS.keep_prob}
                         _, batch_loss, loss_summary = sess.run(
                             [train_op, loss, loss_summary_op],
                             feed_dict=feed_dict)
@@ -125,7 +125,8 @@ def main(_):
                     if (epoch % FLAGS.evaluate_step == 0
                         or epoch == num_batches - 1):
                         val_feed_dict = {cnn.input_x: np.array(test_xs),
-                                         cnn.input_y: np.array(test_ys)}
+                                         cnn.input_y: np.array(test_ys),
+                                         cnn.keep_prob: 1.0}
                         eval_accuracy, eval_summary = sess.run(
                             [eval_op, eval_summary_op],
                             feed_dict=val_feed_dict)

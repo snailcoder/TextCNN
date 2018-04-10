@@ -4,10 +4,10 @@ import tensorflow as tf
 class TextCNN(object):
     def __init__(self, vocab_size, embed_size, seq_len,
                  num_classes, filter_window_sizes, num_filters,
-                 learning_rate, keep_prob, l2_lambda):
+                 learning_rate, l2_lambda):
         self.input_x = tf.placeholder(tf.int32, shape=(None, seq_len))
         self.input_y = tf.placeholder(tf.float32, shape=(None, num_classes))
-        self.keep_prob = keep_prob
+        self.keep_prob = tf.placeholder(tf.float32)
         self.vocab_size = vocab_size
         self.embed_size = embed_size
         self.seq_len = seq_len
