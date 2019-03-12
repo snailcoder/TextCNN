@@ -9,15 +9,14 @@ import re
 import numpy as np
 import tensorflow as tf
 
+import special_words
+
 FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_string("pos_input_file", None,
                        "The positive dataset, which is a pre-tokenized input .txt file.")
 tf.flags.DEFINE_string("neg_input_file", None,
                        "The negative dataset, which is a pre-tokenized input .txt file.")
-
-# tf.flags.DEFINE_string("w2v_file", None,
-#                        "The Google (Mikolov) word2vec file.")
 
 tf.flags.DEFINE_string("output_dir", None, "Output directory.")
 
@@ -34,11 +33,6 @@ tf.flags.DEFINE_integer("validation_output_shards", 1,
                         "Number of output shards for the validation set.")
 
 tf.logging.set_verbosity(tf.logging.INFO)
-
-PAD = "<PAD>"
-PAD_ID = 0
-UNK = "<UNK>"
-UNK_ID = 1
 
 def clean_str(string):
     """
@@ -78,8 +72,8 @@ def _build_vocab(input_files):
 
     sorted_items = word_cnt.most_common()
     vocab = collections.OrderedDict()
-    vocab[PAD] = PAD_ID
-    vocab[UNK] = UNK_ID
+    vocab[special_words.PAD] = special_words.PAD_ID
+    vocab[special_words.UNK] = special_words.UNK_ID
     for widx, item in enumerate(sorted_items):
         vocab[item[0]] = widx + 2  # 0: PAD, 1: UNK
     tf.logging.info("Create vocab with %d words.", len(vocab))
@@ -103,7 +97,7 @@ def _int64_feature(value):
 
 def _sentence_to_ids(sentence, vocab):
     """Helper for converting a sentence (list of words) to a list of ids."""
-    ids = [vocab.get(w, UNK) for w in sentence]
+    ids = [vocab.get(w, special_words.UNK) for w in sentence]
     return ids
 
 def _create_serialized_example(sent, label, vocab):
