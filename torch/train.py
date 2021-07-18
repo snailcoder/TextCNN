@@ -3,12 +3,13 @@
 # File              : train.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 09.07.2021
-# Last Modified Date: 16.07.2021
+# Last Modified Date: 18.07.2021
 # Last Modified By  : Yan <yanwong@126.com>
 
 import os
 import argparse
 
+import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchtext.data.utils import get_tokenizer
@@ -20,12 +21,16 @@ import config
 
 parser = argparse.ArgumentParser(
     description='Train a TextCnn model and save the best weights.')
-parser.add_argument('data_file', help='path of dataset')
-parser.add_argument('data_name', choices=['ctrip'], help='name of dataset')
+parser.add_argument('data_file', help='dataset file')
+parser.add_argument('data_name', choices=['ctrip'], help='dataset name')
 parser.add_argument('save_dir', help='directory tor save the best model')
+parser.add_argument('--word_vec', help='pretrained word vector file')
 parser.add_argument('--log_interval', type=int, default=100,
                     help='print training log every interval batches')
 args = parser.parse_args()
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print('Using {} device'.format(device))
 
 dataset = None
 if args.data_name == 'ctrip':
@@ -34,6 +39,7 @@ if args.data_name == 'ctrip':
 if dataset is None:
   raise ValueError(f'Invalid dataset type: {args.data_name}')
 
+model_config = config.ModelConfig()
 train_config = config.TrainConfig()
 
 train_size = int(train_config.train_size * len(dataset))
@@ -45,9 +51,6 @@ vocab = datasets.build_vocab(training_data, tokenizer)
 
 text_transform = lambda x: [vocab[token] for token in tokenizer(x)]
 label_transform = lambda x: int(x)
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-print('Using {} device'.format(device))
 
 def collate_batch(batch):
   label_list, text_list = [], []
@@ -67,8 +70,34 @@ test_dataloader = DataLoader(test_data,
                              shuffle=train_config.shuffle,
                              collate_fn=collate_batch)
 
-model_config = config.ModelConfig()
-model = model.TextCnn(model_config).to(device)
+def load_pretrained_embedding(filename, emb_dim, words):
+  w2v = {}
+  ws = set(words)
+  with open(filename, 'r', encoding='utf-8') as f:
+    for row in f:
+      toks = row.split(' ')
+      if toks[0] in ws:
+        w2v[toks[0]] = np.array(list(map(float, toks[-emb_dim:])))
+  emb = []
+  oop_num = 0
+  for w in words:
+    if w not in w2v:
+      w2v[w] = np.random.uniform(-0.25, 0.25, emb_dim)
+      oop_num += 1
+    emb.append(w2v[w])
+
+  print(f'# out-of-pretrained words: {oop_num}')
+
+  return emb
+
+pretrained_embedding = None
+if args.word_vec:
+  pretrained_embedding = load_pretrained_embedding(
+      args.word_vec, model_config.d_word, vocab.get_itos())
+  print('# total words: %d' % len(pretrained_embedding))
+  pretrained_embedding = torch.FloatTensor(pretrained_embedding).to(device)
+
+model = model.TextCnn(model_config, len(vocab), pretrained_embedding).to(device)
  
 def train_loop(dataloader, model, loss_fn, optimizer):
   size = len(dataloader.dataset)

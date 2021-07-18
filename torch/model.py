@@ -3,7 +3,7 @@
 # File              : model.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 07.07.2021
-# Last Modified Date: 15.07.2021
+# Last Modified Date: 18.07.2021
 # Last Modified By  : Yan <yanwong@126.com>
 
 import torch
@@ -11,11 +11,13 @@ from torch import nn
 import torch.nn.functional as F
 
 class TextCnn(nn.Module):
-  def __init__(self, config):
+  def __init__(self, config, vocab_size, pretrained_embedding):
     super(TextCnn, self).__init__()
-    # self.embedding = nn.Embedding.from_pretrained(
-    #     pretrained_embedding, freeze=args.static_embedding)
-    self.embedding = nn.Embedding(config.vocab_size, config.d_word)
+    if pretrained_embedding is not None:
+      self.embedding = nn.Embedding.from_pretrained(
+          pretrained_embedding, freeze=config.static_embedding)
+    else:
+      self.embedding = nn.Embedding(vocab_size, config.d_word)
     self.convs = nn.ModuleList([
       nn.Conv2d(1, c, (h, config.d_word), padding='valid')
                 for c, h in zip(config.filter_num, config.filter_heights)])
