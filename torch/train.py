@@ -3,7 +3,7 @@
 # File              : train.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 09.07.2021
-# Last Modified Date: 18.07.2021
+# Last Modified Date: 19.07.2021
 # Last Modified By  : Yan <yanwong@126.com>
 
 import os
@@ -23,7 +23,7 @@ parser = argparse.ArgumentParser(
     description='Train a TextCnn model and save the best weights.')
 parser.add_argument('data_file', help='dataset file')
 parser.add_argument('data_name', choices=['ctrip'], help='dataset name')
-parser.add_argument('save_dir', help='directory tor save the best model')
+parser.add_argument('save_dir', help='directory to save vocab and model')
 parser.add_argument('--word_vec', help='pretrained word vector file')
 parser.add_argument('--log_interval', type=int, default=100,
                     help='print training log every interval batches')
@@ -48,6 +48,15 @@ training_data, test_data= torch.utils.data.random_split(dataset, [train_size, te
 
 tokenizer = get_tokenizer(datasets.chinese_tokenizer, language='chn')
 vocab = datasets.build_vocab(training_data, tokenizer)
+
+def save_model(model, save_dir, filename):
+  if not os.path.isdir(save_dir):
+    os.makedirs(save_dir)
+  save_path = os.path.join(save_dir, filename)
+  # torch.save(model.state_dict(), save_path)
+  torch.save(model, save_path)
+
+save_model(vocab, args.save_dir, 'vocab.pth')
 
 text_transform = lambda x: [vocab[token] for token in tokenizer(x)]
 label_transform = lambda x: int(x)
@@ -129,11 +138,6 @@ def test_loop(dataloader, model, loss_fn):
          ' Avg loss: {test_loss:>8f} \n')
   return accuracy
 
-def save_model(model, save_dir):
-  if not os.path.isdir(save_dir):
-    os.makedirs(save_dir)
-  save_path = os.path.join(save_dir, 'best_weights.pth')
-  torch.save(model.state_dict(), save_path)
 
 loss_fn = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=train_config.learning_rate)
@@ -145,7 +149,7 @@ for t in range(train_config.epochs):
     accu = test_loop(test_dataloader, model, loss_fn)
     if accu > best_accu:
       best_accu = accu
-      save_model(model, args.save_dir)
+      save_model(model, args.save_dir, 'best_model.pth')
       print(f'Best accuracy: {best_accu}\n')
-print("Done!")
+print(f'Global best accuracy: {best_accu}')
 

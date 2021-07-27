@@ -3,7 +3,7 @@
 # File              : config.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 08.07.2021
-# Last Modified Date: 18.07.2021
+# Last Modified Date: 19.07.2021
 # Last Modified By  : Yan <yanwong@126.com>
 
 class ModelConfig(object):
@@ -19,7 +19,7 @@ class TrainConfig(object):
   def __init__(self):
     self.learning_rate = 1e-3
     self.batch_size = 32
-    self.epochs = 20
+    self.epochs = 10
     self.shuffle = True
     self.train_size = 0.9
 
