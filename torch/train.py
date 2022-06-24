@@ -3,7 +3,7 @@
 # File              : train.py
 # Author            : Yan <yanwong@126.com>
 # Date              : 09.07.2021
-# Last Modified Date: 19.07.2021
+# Last Modified Date: 16.06.2022
 # Last Modified By  : Yan <yanwong@126.com>
 
 import os
@@ -135,7 +135,7 @@ def test_loop(dataloader, model, loss_fn):
   test_loss /= num_batches
   accuracy = correct / size
   print(f'Test Error: \n Accuracy: {(100*accuracy):>0.1f}%,'
-         ' Avg loss: {test_loss:>8f} \n')
+        f' Avg loss: {test_loss:>8f} \n')
   return accuracy
 
 
